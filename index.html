@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>reveal.js</title>
+
+		<link rel="stylesheet" href="dist/reset.css">
+		<link rel="stylesheet" href="dist/reveal.css">
+		<link rel="stylesheet" href="dist/theme/black.css">
+
+		<!-- Theme used for syntax highlighted code -->
+		<link rel="stylesheet" href="plugin/highlight/monokai.css">
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+        <section data-markdown>
+          # Who am I? 
+
+          ## Amanti Lulo 
+          ![](./media/avatar.png)
+
+          - Container Platform
+          - Solution Architect
+          ---
+
+          # Who are you?
+
+          ---
+
+          # Moat? 
+          [Justin O'Beirne](https://www.justinobeirne.com/google-maps-moat)
+
+        </section>
+
+        <section>
+            <h1>Kubernetes</h1>
+            <img src="./media/kubernetes_moat.png" class="r-stretch">          
+        </section>         
+
+        <section>
+          <img src="./media/kubernetes_iceberg.png" class="r-stretch">
+        </section>
+
+        <section data-markdown>
+          # Objects
+
+          ---
+          *Basics*
+          - Namespaces
+          - Pods
+          - ReplicaSets
+          - Deployments
+          - ConfigMaps
+          - Secrets
+          - Ingresses
+          - PersistentVolumeClaims
+          - PersistentVolumes
+          - ServiceAccounts
+          - Services
+          - ServiceAccounts      
+          - Nodes        
+
+          ---
+
+          *A little less basic*
+
+          - HorizontalPodAutoscaler
+          - NetworkPolicies
+          - Roles
+          - RoleBindings
+          - PodSecurityStandarts
+          - SecurityContexts
+          - LimitRanges
+          - ResourceQuotas
+
+        </section>
+
+        <section>
+          <h2 class="r-fit-text">Management</h2>
+        </section>
+
+        <section>
+          <ul>
+            <h1>YAML</h1>
+            <h1>Helm</h1>
+            <h1>Kustomize</h1>
+          </ul>
+        </section>
+
+        <section>
+          <h1>YAML</h1>
+          <div>117 lines</div>
+          <pre><code>
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nginx-service-account
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+data:
+  default.conf: |
+    server {
+      listen 80;
+      server_name _;
+      root /usr/share/nginx/html;
+      index index.html;
+
+      location / {
+        try_files $uri $uri/ =404;
+      }
+    }
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nginx-secret
+type: Opaque
+data:
+  # Add your base64 encoded secret data here
+  # Example:
+  # username: dXNlcg==
+  # password: cGFzc3dvcmQ=
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nginx-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      serviceAccountName: nginx-service-account
+      containers:
+        - name: nginx
+          image: nginx:latest
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: nginx-config-volume
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+            - name: nginx-data
+              mountPath: /usr/share/nginx/html
+            - name: secret-volume
+              mountPath: "/etc/secret"
+              readOnly: true
+      volumes:
+        - name: nginx-config-volume
+          configMap:
+            name: nginx-config
+        - name: nginx-data
+          persistentVolumeClaim:
+            claimName: nginx-pvc
+        - name: secret-volume
+          secret:
+            secretName: nginx-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+spec:
+  selector:
+    app: nginx
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: your-domain.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nginx-service
+                port:
+                  number: 80
+          </code></pre>
+        </section>
+
+        <section>
+          <h1>Helm</h1>
+          <div>212 lines</div>
+          <pre><code>
+{{- if .Values.serviceAccount.create -}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "nginx-chart.serviceAccountName" . }}
+  labels:
+    {{- include "nginx-chart.labels" . | nindent 4 }}
+{{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.configMap.name }}
+  labels:
+    {{- include "nginx-chart.labels" . | nindent 4 }}
+data:
+  default.conf: |
+{{ .Values.configMap.data.default\.conf | indent 4 }}
+---
+{{- if .Values.secret.create -}}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Values.secret.name }}
+  labels:
+    {{- include "nginx-chart.labels" . | nindent 4 }}
+type: {{ .Values.secret.type }}
+data:
+  {{- toYaml .Values.secret.data | nindent 2 }}
+{{- end }}
+---
+{{- if .Values.pvc.create -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.pvc.name }}
+  labels:
+    {{- include "nginx-chart.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.pvc.accessModes | nindent 4 }}
+  resources:
+    requests:
+      storage: {{ .Values.pvc.storage }}
+{{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "nginx-chart.fullname" . }}
+  labels:
+    {{- include "nginx-chart.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "nginx-chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "nginx-chart.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "nginx-chart.serviceAccountName" . }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          volumeMounts:
+            - name: nginx-config-volume
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+            - name: nginx-data
+              mountPath: /usr/share/nginx/html
+            - name: secret-volume
+              mountPath: "/etc/secret"
+              readOnly: true
+      volumes:
+        - name: nginx-config-volume
+          configMap:
+            name: {{ .Values.configMap.name }}
+        - name: nginx-data
+          persistentVolumeClaim:
+            claimName: {{ .Values.pvc.name }}
+        - name: secret-volume
+          secret:
+            secretName: {{ .Values.secret.name }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.service.name }}
+  labels:
+    {{- include "nginx-chart.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "nginx-chart.selectorLabels" . | nindent 4 }}
+---
+{{- if .Values.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Values.ingress.name }}
+  labels:
+    {{- include "nginx-chart.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    {{- range .Values.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ $.Values.service.name }}
+                port:
+                  number: {{ $.Values.service.port }}
+          {{- end }}
+    {{- end }}
+{{- end }}
+---
+
+replicaCount: 2
+
+image:
+  repository: nginx
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+serviceAccount:
+  create: true
+  name: "nginx-service-account"
+
+configMap:
+  name: "nginx-config"
+  data:
+    default.conf: |
+      server {
+        listen 80;
+        server_name _;
+        root /usr/share/nginx/html;
+        index index.html;
+
+        location / {
+          try_files $uri $uri/ =404;
+        }
+      }
+
+secret:
+  create: true
+  name: "nginx-secret"
+  type: Opaque
+  data: {}
+  #  username: dXNlcg==
+  #  password: cGFzc3dvcmQ=
+
+pvc:
+  create: true
+  name: "nginx-pvc"
+  accessModes:
+    - ReadWriteOnce
+  storage: "1Gi"
+
+service:
+  name: "nginx-service"
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  name: "nginx-ingress"
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  hosts:
+    - host: your-domain.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: your-tls-secret
+  #    hosts:
+  #      - your-domain.com
+          </code></pre>
+        </section>
+
+        <section>
+          <h1>Kustomize</h1>
+          <div>153 lines</div>
+          <pre><code>
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ./yaml.yaml
+
+patchesJson6902:
+- target:
+    group: apps
+    version: v1
+    kind: Deployment
+    name: nginx-deployment
+  patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/image
+      value: nginx:MyCoolVersion
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value:
+        name: foo
+        value: "bar"
+
+patches:
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: nginx-deployment
+      spec:
+        template:
+          spec:
+            containers:
+              - name: nginx
+                env:
+                  - name: foo
+                    value: "bar"
+
+          </code></pre>
+        </section>
+
+        <section>
+          <h1 class="r-fit-text">Abstractions</h1>
+        </section>
+
+        <section>
+          <h1>Banalization/Generalization</h1>
+        </section>
+
+        <section>
+          <div>Generalization requires a person to select and simplify the level of detail on their map to optimize how information is presented. Generalization allows map makers to account for a map’s scale while still accurately representing a landscape.</div>
+        </section>
+
+        <section>
+          <ul>
+            <li>Selection and Omission</li>
+            <li>Simplification</li>
+            <li>Smoothing</li>
+            <li>Grouping/Aggregation</li>
+            <li>Displacement/Exaggeration</li>
+          </ul>
+        </section>
+
+        <section>
+          <h4>Simplification</h4>
+          <img src="https://colorado.pressbooks.pub/app/uploads/sites/20/2024/03/image1-7.png" alt="simplification" class="r-strech">
+          <div></div>
+          <img src="https://colorado.pressbooks.pub/app/uploads/sites/20/2024/03/image2-6.png" alt="smoothing" class="r-stretch">
+          <h4>Smoothing</h4>
+          <img src="https://colorado.pressbooks.pub/app/uploads/sites/20/2024/03/image3-7.png" alt="smoothing" class="r-strech">
+          <h4>Aggregation</h4>
+          <img src="https://colorado.pressbooks.pub/app/uploads/sites/20/2024/03/image4-7.png" alt="aggregation" class="r-stretch">
+        </section>
+
+        <section>
+          <h1 class="r-fix-text">CRDs</h1>
+        </section>
+
+        <section>
+          <ul>
+            <h1><a href="https://kro.run" data-preview-link>KRO</a></h1>
+            <h1><a href="https://yokecd.github.io/docs" data-preview-link="">YOKEcd</a></h1>
+          </ul>
+        </section>
+
+        <section>
+          <h1>Custom Deployment</h1>
+          <div>212 lines</div>
+          <pre><code>
+  apiVersion: kro.run/v1alpha1
+  kind: ResourceGraphDefinition
+  metadata:
+    name: webapp-application
+  spec:
+    schema:
+      apiVersion: v1alpha1
+      kind: WebApplication
+      spec:
+        name: string | required=true description="Application name"
+        image: string | default="nginx:latest" description="Container image"
+        replicas: integer | default=2 minimum=1 description="Pod replica count"
+        ingress:
+          enabled: boolean | default=false description="Expose via Ingress"
+          host:    string | required=false description="Ingress host"
+          port:    integer | default=8080 description="Ingress port"
+          clusterIssuer: string | required=false default="mkcert" description="Cert-manager cluster issuer"
+      status:
+        deploymentConditions: ${deployment.status.conditions}
+        availableReplicas:    ${deployment.status.availableReplicas}
+        serviceClusterIP:     ${service.spec.clusterIP}
+
+    resources:
+
+      - id: appNamespace
+        template:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name:      ${schema.spec.name}
+            labels:
+              pod-security.kubernetes.io/enforce: "restricted"
+              pod-security.kubernetes.io/audit:    "baseline"
+              pod-security.kubernetes.io/warn:     "baseline"
+
+      - id: serviceAccount
+        template:
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name:      ${schema.spec.name}-sa
+            namespace: ${appNamespace.metadata.name}
+
+      - id: configMap
+        template:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name:      ${schema.spec.name}-config
+            namespace: ${appNamespace.metadata.name}
+          data:
+            APP_ENV:   "production"
+            LOG_LEVEL: "info"
+
+      - id: deployment
+        template:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name:      ${schema.spec.name}
+            namespace: ${appNamespace.metadata.name}
+          spec:
+            replicas: ${schema.spec.replicas}
+            selector:
+              matchLabels:
+                app: ${schema.spec.name}
+            template:
+              metadata:
+                labels:
+                  app: ${schema.spec.name}
+              spec:
+                serviceAccountName: ${serviceAccount.metadata.name}
+                securityContext:
+                  runAsNonRoot: true
+                  runAsUser:    1000
+                  fsGroup:      2000
+                  seccompProfile:
+                    type: RuntimeDefault
+                volumes:
+                  - name: tmp
+                    emptyDir: {}
+                  - name: podname
+                    downwardAPI:
+                      items:
+                        - path: podname
+                          fieldRef:
+                            fieldPath: metadata.name
+                containers:
+                  - name: ${schema.spec.name}
+                    image: ${schema.spec.image}
+                    ports:
+                      - containerPort: 8080
+                    resources:
+                      requests:
+                        cpu:    "100m"
+                        memory: "256Mi"
+                      limits:
+                        cpu:    "200m"
+                        memory: "512Mi"
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      readOnlyRootFilesystem:   true
+                      capabilities:
+                        drop: ["ALL"]
+                        add: ["NET_BIND_SERVICE"]
+                    volumeMounts:
+                      - name: tmp
+                        mountPath: /var/cache/nginx
+                      - name: tmp
+                        mountPath: /tmp
+                      - name: podname
+                        mountPath: /usr/share/nginx/html/podname
+                        subPath: podname
+                        readOnly: true
+                    envFrom:
+                      - configMapRef:
+                          name: ${configMap.metadata.name}
+                    livenessProbe:
+                      httpGet:
+                        path: /healthz
+                        port: 8080
+                      initialDelaySeconds: 30
+                      periodSeconds:       10
+                      failureThreshold:    3
+                    readinessProbe:
+                      httpGet:
+                        path: /ready
+                        port: 8080
+                      initialDelaySeconds: 5
+                      periodSeconds:       5
+
+      - id: service
+        template:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name:      ${schema.spec.name}-service
+            namespace: ${appNamespace.metadata.name}
+          spec:
+            selector:
+              app: ${schema.spec.name}
+            ports:
+              - protocol: TCP
+                port:       8080
+                targetPort: 8080
+
+      - id: networkPolicy
+        template:
+          apiVersion: networking.k8s.io/v1
+          kind: NetworkPolicy
+          metadata:
+            name:      ${schema.spec.name}-netpol
+            namespace: ${appNamespace.metadata.name}
+          spec:
+            podSelector:
+              matchLabels:
+                app: ${schema.spec.name}
+            policyTypes:
+              - Ingress
+            ingress:
+              - from:
+                  - podSelector:
+                      matchLabels:
+                        app: ingress-nginx
+                ports:
+                  - protocol: TCP
+                    port: 8080
+
+      - id: hpa
+        template:
+          apiVersion: autoscaling/v2
+          kind: HorizontalPodAutoscaler
+          metadata:
+            name:      ${schema.spec.name}-hpa
+            namespace: ${appNamespace.metadata.name}
+          spec:
+            scaleTargetRef:
+              apiVersion: apps/v1
+              kind:       Deployment
+              name:       ${deployment.metadata.name}
+            minReplicas: ${schema.spec.replicas}
+            maxReplicas: 10
+            metrics:
+              - type: Resource
+                resource:
+                  name:               cpu
+                  target:
+                    type:             Utilization
+                    averageUtilization: 50
+
+      - id: ingress
+        includeWhen:
+          - ${schema.spec.ingress.enabled}
+        template:
+          apiVersion: networking.k8s.io/v1
+          kind: Ingress
+          metadata:
+            name:      ${schema.spec.name}-ingress
+            namespace: ${appNamespace.metadata.name}
+            annotations:
+              cert-manager.io/cluster-issuer: ${schema.spec.ingress.clusterIssuer}
+              nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+          spec:
+            ingressClassName: nginx
+            tls:
+              - hosts:
+                  - ${schema.spec.ingress.host}
+                secretName: ${schema.spec.ingress.host}-tls
+            rules:
+              - host: ${schema.spec.ingress.host}
+                http:
+                  paths:
+                    - path: /
+                      pathType: Prefix
+                      backend:
+                        service:
+                          name: ${service.metadata.name}
+                          port:
+                            number: ${schema.spec.ingress.port}
+          </code></pre>
+        </section>
+
+
+
+  
+
+			</div>
+		</div>
+
+		<script src="dist/reveal.js"></script>
+		<script src="plugin/notes/notes.js"></script>
+		<script src="plugin/markdown/markdown.js"></script>
+		<script src="plugin/highlight/highlight.js"></script>
+    <script src="plugin/zoom/zoom.js"></script>
+		<script>
+			// More info about initialization & config:
+			// - https://revealjs.com/initialization/
+			// - https://revealjs.com/config/
+			Reveal.initialize({
+				hash: true,
+
+				// Learn about plugins: https://revealjs.com/plugins/
+				plugins: [ RevealZoom, RevealMarkdown, RevealHighlight ]
+			});
+		</script>
+	</body>
+</html>

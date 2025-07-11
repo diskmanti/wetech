@@ -1,0 +1,5 @@
+Intro
+What are Kubernetes Objects?
+How are they managed
+Object Banalization
+Q&A

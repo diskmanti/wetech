@@ -1,0 +1,219 @@
+  apiVersion: kro.run/v1alpha1
+  kind: ResourceGraphDefinition
+  metadata:
+    name: webapp-application
+  spec:
+    schema:
+      apiVersion: v1alpha1
+      kind: WebApplication
+      spec:
+        name: string | required=true description="Application name"
+        image: string | default="nginx:latest" description="Container image"
+        replicas: integer | default=2 minimum=1 description="Pod replica count"
+        ingress:
+          enabled: boolean | default=false description="Expose via Ingress"
+          host:    string | required=false description="Ingress host"
+          port:    integer | default=8080 description="Ingress port"
+          clusterIssuer: string | required=false default="mkcert" description="Cert-manager cluster issuer"
+      status:
+        deploymentConditions: ${deployment.status.conditions}
+        availableReplicas:    ${deployment.status.availableReplicas}
+        serviceClusterIP:     ${service.spec.clusterIP}
+
+    resources:
+
+      - id: appNamespace
+        template:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name:      ${schema.spec.name}
+            labels:
+              pod-security.kubernetes.io/enforce: "restricted"
+              pod-security.kubernetes.io/audit:    "baseline"
+              pod-security.kubernetes.io/warn:     "baseline"
+
+      - id: serviceAccount
+        template:
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name:      ${schema.spec.name}-sa
+            namespace: ${appNamespace.metadata.name}
+
+      - id: configMap
+        template:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name:      ${schema.spec.name}-config
+            namespace: ${appNamespace.metadata.name}
+          data:
+            APP_ENV:   "production"
+            LOG_LEVEL: "info"
+
+      - id: deployment
+        template:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name:      ${schema.spec.name}
+            namespace: ${appNamespace.metadata.name}
+          spec:
+            replicas: ${schema.spec.replicas}
+            selector:
+              matchLabels:
+                app: ${schema.spec.name}
+            template:
+              metadata:
+                labels:
+                  app: ${schema.spec.name}
+              spec:
+                serviceAccountName: ${serviceAccount.metadata.name}
+                securityContext:
+                  runAsNonRoot: true
+                  runAsUser:    1000
+                  fsGroup:      2000
+                  seccompProfile:
+                    type: RuntimeDefault
+                volumes:
+                  - name: tmp
+                    emptyDir: {}
+                  - name: podname
+                    downwardAPI:
+                      items:
+                        - path: podname
+                          fieldRef:
+                            fieldPath: metadata.name
+                containers:
+                  - name: ${schema.spec.name}
+                    image: ${schema.spec.image}
+                    ports:
+                      - containerPort: 8080
+                    resources:
+                      requests:
+                        cpu:    "100m"
+                        memory: "256Mi"
+                      limits:
+                        cpu:    "200m"
+                        memory: "512Mi"
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      readOnlyRootFilesystem:   true
+                      capabilities:
+                        drop: ["ALL"]
+                        add: ["NET_BIND_SERVICE"]
+                    volumeMounts:
+                      - name: tmp
+                        mountPath: /var/cache/nginx
+                      - name: tmp
+                        mountPath: /tmp
+                      - name: podname
+                        mountPath: /usr/share/nginx/html/podname
+                        subPath: podname
+                        readOnly: true
+                    envFrom:
+                      - configMapRef:
+                          name: ${configMap.metadata.name}
+                    livenessProbe:
+                      httpGet:
+                        path: /healthz
+                        port: 8080
+                      initialDelaySeconds: 30
+                      periodSeconds:       10
+                      failureThreshold:    3
+                    readinessProbe:
+                      httpGet:
+                        path: /ready
+                        port: 8080
+                      initialDelaySeconds: 5
+                      periodSeconds:       5
+
+      - id: service
+        template:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name:      ${schema.spec.name}-service
+            namespace: ${appNamespace.metadata.name}
+          spec:
+            selector:
+              app: ${schema.spec.name}
+            ports:
+              - protocol: TCP
+                port:       8080
+                targetPort: 8080
+
+      - id: networkPolicy
+        template:
+          apiVersion: networking.k8s.io/v1
+          kind: NetworkPolicy
+          metadata:
+            name:      ${schema.spec.name}-netpol
+            namespace: ${appNamespace.metadata.name}
+          spec:
+            podSelector:
+              matchLabels:
+                app: ${schema.spec.name}
+            policyTypes:
+              - Ingress
+            ingress:
+              - from:
+                  - podSelector:
+                      matchLabels:
+                        app: ingress-nginx
+                ports:
+                  - protocol: TCP
+                    port: 8080
+
+      - id: hpa
+        template:
+          apiVersion: autoscaling/v2
+          kind: HorizontalPodAutoscaler
+          metadata:
+            name:      ${schema.spec.name}-hpa
+            namespace: ${appNamespace.metadata.name}
+          spec:
+            scaleTargetRef:
+              apiVersion: apps/v1
+              kind:       Deployment
+              name:       ${deployment.metadata.name}
+            minReplicas: ${schema.spec.replicas}
+            maxReplicas: 10
+            metrics:
+              - type: Resource
+                resource:
+                  name:               cpu
+                  target:
+                    type:             Utilization
+                    averageUtilization: 50
+
+      - id: ingress
+        includeWhen:
+          - ${schema.spec.ingress.enabled}
+        template:
+          apiVersion: networking.k8s.io/v1
+          kind: Ingress
+          metadata:
+            name:      ${schema.spec.name}-ingress
+            namespace: ${appNamespace.metadata.name}
+            annotations:
+              cert-manager.io/cluster-issuer: ${schema.spec.ingress.clusterIssuer}
+              nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+          spec:
+            ingressClassName: nginx
+            tls:
+              - hosts:
+                  - ${schema.spec.ingress.host}
+                secretName: ${schema.spec.ingress.host}-tls
+            rules:
+              - host: ${schema.spec.ingress.host}
+                http:
+                  paths:
+                    - path: /
+                      pathType: Prefix
+                      backend:
+                        service:
+                          name: ${service.metadata.name}
+                          port:
+                            number: ${schema.spec.ingress.port}
