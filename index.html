@@ -4,7 +4,7 @@
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-		<title>reveal.js</title>
+		<title>Improving DevExp: Abstracting away the K8s Moat for Developers</title>
 
 		<link rel="stylesheet" href="dist/reset.css">
 		<link rel="stylesheet" href="dist/reveal.css">
@@ -22,8 +22,6 @@
           ## Amanti Lulo 
           ![](./media/avatar.png)
 
-          - Container Platform
-          - Solution Architect
           ---
 
           # Who are you?
@@ -44,38 +42,42 @@
           <img src="./media/kubernetes_iceberg.png" class="r-stretch">
         </section>
 
-        <section data-markdown>
-          # Objects
+        <section>
+          <h1>Objects</h1>
+        </section>
+        
+        <section>
+          <h1>Basics</h1>
+          <ul>
+            <li>Namespaces</li> 
+            <li>Pods</li> 
+            <li>ReplicaSets</li> 
+            <li>Deployments</li> 
+            <li>ConfigMaps</li> 
+            <li>Secrets</li> 
+            <li>Ingresses</li> 
+            <li>PersistentVolumeClaims</li> 
+            <li>PersistentVolumes</li> 
+            <li>ServiceAccounts</li> 
+            <li>Services</li> 
+            <li>ServiceAccounts</li>       
+            <li>Nodes</li>  
+          </ul>
+        </section>
 
-          ---
-          *Basics*
-          - Namespaces
-          - Pods
-          - ReplicaSets
-          - Deployments
-          - ConfigMaps
-          - Secrets
-          - Ingresses
-          - PersistentVolumeClaims
-          - PersistentVolumes
-          - ServiceAccounts
-          - Services
-          - ServiceAccounts      
-          - Nodes        
+        <section>
 
-          ---
-
-          *A little less basic*
-
-          - HorizontalPodAutoscaler
-          - NetworkPolicies
-          - Roles
-          - RoleBindings
-          - PodSecurityStandarts
-          - SecurityContexts
-          - LimitRanges
-          - ResourceQuotas
-
+          <h1>A little less basic</h1>
+          <ul>
+            <li>HorizontalPodAutoscaler</li> 
+            <li>NetworkPolicies</li> 
+            <li>Roles</li> 
+            <li>RoleBindings</li> 
+            <li>PodSecurityStandarts</li> 
+            <li>SecurityContexts</li> 
+            <li>LimitRanges</li> 
+            <li>ResourceQuotas</li>
+          </ul>
         </section>
 
         <section>
@@ -501,11 +503,16 @@ patches:
 
         <section>
           <h4>Simplification</h4>
-          <img src="https://colorado.pressbooks.pub/app/uploads/sites/20/2024/03/image1-7.png" alt="simplification" class="r-strech">
-          <div></div>
-          <img src="https://colorado.pressbooks.pub/app/uploads/sites/20/2024/03/image2-6.png" alt="smoothing" class="r-stretch">
+          <img src="https://colorado.pressbooks.pub/app/uploads/sites/20/2024/03/image1-7.png" alt="simplification" height="40%" width="40%">
+          <br>
+
+          <img src="https://colorado.pressbooks.pub/app/uploads/sites/20/2024/03/image2-6.png" alt="smoothing" height="40%" width="40%">
+
+        </section>
+
+        <section>
           <h4>Smoothing</h4>
-          <img src="https://colorado.pressbooks.pub/app/uploads/sites/20/2024/03/image3-7.png" alt="smoothing" class="r-strech">
+          <img src="https://colorado.pressbooks.pub/app/uploads/sites/20/2024/03/image3-7.png" alt="smoothing" height="100%" width="100%">
           <h4>Aggregation</h4>
           <img src="https://colorado.pressbooks.pub/app/uploads/sites/20/2024/03/image4-7.png" alt="aggregation" class="r-stretch">
         </section>
@@ -745,6 +752,10 @@ patches:
                           port:
                             number: ${schema.spec.ingress.port}
           </code></pre>
+        </section>
+
+        <section>
+          
         </section>
 
 
