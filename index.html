@@ -17,26 +17,29 @@
 	<body>
 		<div class="reveal">
 			<div class="slides">
-        <section data-markdown>
-          # Who am I? 
-
-          ## Amanti Lulo 
-          ![](./media/avatar.png)
-
-          ---
-
-          # Who are you?
-
-          ---
-
-          # Moat? 
-          [Justin O'Beirne](https://www.justinobeirne.com/google-maps-moat)
-
+        <section>
+          <h1 class="r-fit-text">Imroving DevExp: Abstracting away the K8S Moat for Developers</h1>
         </section>
 
         <section>
-            <h1>Kubernetes</h1>
-            <img src="./media/kubernetes_moat.png" class="r-stretch">          
+          <h1>Who am I?</h1>
+
+          <h2>Amanti Lulo</h2>
+          <img src="./media/avatar.png" alt="">
+        </section>
+        <section>
+          <h1>Who are you?</h1>
+        </section>
+
+        <section>
+          <h1>Moat?</h1>
+          <div><a href="https://www.justinobeirne.com/google-maps-moat">Justin O'Bierne</a></div>
+        </section>
+
+        <section>
+            <h4>Welcome to Castle Kubernetes</h4>
+            <!-- <img src="./media/kubernetes_moat.png" class="r-stretch">        -->
+            <img src="./media/kubernetes_moat_darker.png" class="r-stretch">      
         </section>         
 
         <section>
@@ -47,27 +50,42 @@
           <h1>Objects</h1>
         </section>
         
+      
         <section>
           <h1>Basics</h1>
-          <ul>
-            <li>Namespaces</li> 
-            <li>Pods</li> 
-            <li>ReplicaSets</li> 
-            <li>Deployments</li> 
-            <li>ConfigMaps</li> 
-            <li>Secrets</li> 
-            <li>Ingresses</li> 
-            <li>PersistentVolumeClaims</li> 
-            <li>PersistentVolumes</li> 
-            <li>ServiceAccounts</li> 
-            <li>Services</li> 
-            <li>ServiceAccounts</li>       
-            <li>Nodes</li>  
-          </ul>
+          <div style="display: flex; justify-content: space-around;">
+            <ul style="flex: 1; margin-right: 50px;">
+              <li>Namespaces</li>
+              <li>Pods</li>
+              <li>ReplicaSets</li>
+              <li>Deployments</li>
+              <li>ConfigMaps</li>
+              <li>Secrets</li>
+              <li>Ingresses</li>
+            </ul>
+            <ul style="flex: 1; margin-left: 50px;">
+              <li>DaemonSet</li>
+              <li>Job</li>
+              <li>CronJob</li>
+              <li>DownwarAPI</li>
+              <li>Events</li>
+            </ul>
+            <ul style="flex: 1; margin-left: 50px;">
+              <li>PersistentVolumeClaims</li>
+              <li>PersistentVolumes</li>
+              <li>ServiceAccounts</li>
+              <li>Services</li>
+              <li>ServiceAccounts</li>
+              <li>Nodes</li>
+              <li>StatefulSet</li>
+            </ul>
+     
+          </div>
         </section>
 
-        <section>
+    
 
+        <section>
           <h1>A little less basic</h1>
           <ul>
             <li>HorizontalPodAutoscaler</li> 
@@ -96,7 +114,7 @@
         <section>
           <h1>YAML</h1>
           <div>117 lines</div>
-          <pre><code>
+          <pre><code data-trim data-noescape>
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -221,7 +239,7 @@ spec:
         <section>
           <h1>Helm</h1>
           <div>212 lines</div>
-          <pre><code>
+          <pre><code data-trim data-noescape>
 {{- if .Values.serviceAccount.create -}}
 apiVersion: v1
 kind: ServiceAccount
@@ -439,7 +457,7 @@ ingress:
         <section>
           <h1>Kustomize</h1>
           <div>153 lines</div>
-          <pre><code>
+          <pre><code data-trim data-noescape>
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
@@ -485,7 +503,7 @@ patches:
         </section>
 
         <section>
-          <h1>Banalization/Generalization</h1>
+          <h1 class="r-fit-text">Banalization/Generalization</h1>
         </section>
 
         <section>
@@ -532,7 +550,7 @@ patches:
         <section>
           <h1>Custom Deployment</h1>
           <div>212 lines</div>
-          <pre><code>
+          <pre><code data-trim data-noescape>
   apiVersion: kro.run/v1alpha1
   kind: ResourceGraphDefinition
   metadata:
@@ -760,6 +778,7 @@ patches:
         </section>
 
         <section>
+          <h4>Welcome to Castle Kubernetes</h4>
           <img src="./media/kubernetes_sunshine.png" alt="" class="r-stretch">
         </section>
 
