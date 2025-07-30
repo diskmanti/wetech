@@ -1,0 +1,11 @@
+apiVersion: kro.run/v1alpha1
+kind: LhindApp
+metadata:
+  name: amanti
+  namespace: amanti
+spec:
+  appName: amanti
+  image: "nginx:latest"
+  replicas: 1
+  servicePort: 80
+  
